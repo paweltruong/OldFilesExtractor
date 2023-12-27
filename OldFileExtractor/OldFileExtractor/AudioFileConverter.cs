@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -13,6 +14,12 @@ namespace OldFileExtractor
 {
     public partial class AudioFileConverter : UserControl
     {
+        int soxRate;
+        int soxBits;
+        string soxEncoding;
+        string soxPath;
+
+
         public AudioFileConverter()
         {
             InitializeComponent();
@@ -28,6 +35,8 @@ namespace OldFileExtractor
                     AddFileToInputList(file);
                 }
             }
+            TrySetDefaultOutput();
+            VerifyForm();
         }
 
         private void listViewInput_DragEnter(object sender, DragEventArgs e)
@@ -56,6 +65,8 @@ namespace OldFileExtractor
                     }
                 }
             }
+            TrySetDefaultOutput();
+            VerifyForm();
         }
 
         void AddFileToInputList(string file)
@@ -70,6 +81,7 @@ namespace OldFileExtractor
         private void buttonOutput_Click(object sender, EventArgs e)
         {
 
+            VerifyForm();
         }
 
         private void buttonConvert_Click(object sender, EventArgs e)
@@ -80,37 +92,126 @@ namespace OldFileExtractor
             }
         }
 
+        void VerifyForm()
+        {
+            buttonConvert.Enabled = CanStartConvert();
+        }
+
+        bool CanStartConvert()
+        {
+            //SOX
+            if (!Directory.Exists(textBoxSOX.Text))
+            {
+                MessageBox.Show("SOX Error", "SOX tools directory is invalid", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            var soxpath = Path.Combine(textBoxSOX.Text, "sox.exe");
+            if(!File.Exists(soxpath))
+            {
+                MessageBox.Show("SOX Error", "sox.exe was not found at " + soxpath, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            soxPath = soxpath;
+
+            //Input
+            if (listViewInput.Items.Count == 0)
+            {
+                MessageBox.Show("Iput Error", "There is no input provided " + soxpath, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            //Output
+            bool outputDirValid = false;
+            if (!Directory.Exists(textBoxOutput.Text))
+            {
+                try
+                {
+                    var dir = Directory.CreateDirectory(textBoxOutput.Text);
+                    outputDirValid = Directory.Exists(textBoxOutput.Text);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Output Error", e.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return outputDirValid;
+            }
+            else
+            {
+                outputDirValid = true;
+            }
+
+            //SOX params
+            if(!int.TryParse(textBoxSOXRate.Text, out soxRate))
+            {
+                MessageBox.Show("SOX Error", "Invalid rate", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            if (string.IsNullOrEmpty(textBoxSOXEncoding.Text))
+            {
+                MessageBox.Show("SOX Error", "Invalid encoding", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            soxEncoding = textBoxSOXEncoding.Text.Trim();
+            if (!int.TryParse(textBoxSOXBits.Text, out soxBits))
+            {
+                MessageBox.Show("SOX Error", "Invalid bits", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TrySetDefaultOutput()
+        {
+            if (string.IsNullOrEmpty(textBoxOutput.Text))
+            {
+                if (listViewInput.Items.Count > 0)
+                {
+                    var firstPath = listViewInput.Items[0].SubItems[2].Text.Trim();
+                    var dir = Path.GetDirectoryName(firstPath);
+                    var di = Directory.CreateDirectory(Path.Combine( dir, "output"));
+                    if (Directory.Exists(di.FullName))
+                    {
+                        textBoxOutput.Text = di.FullName;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         void Convert(string binarySourceFile)
         {
-            Console.WriteLine(String.Format("Begin Reading {0}:\r\n", binarySourceFile));
+            var outputFile = Path.Combine(textBoxOutput.Text, Path.GetFileNameWithoutExtension(binarySourceFile));
 
-            //using (var fs = File.OpenRead(binarySourceFile))
-            //{
-            //    fs.Rea
-            //}
+            var args = String.Format("-r {0} -e {1} -b {2} \"{3}\" \"{4}.wav\"", soxRate, soxEncoding, soxBits,
+                    binarySourceFile,
+                    outputFile
+                    );
 
-            byte[] content = File.ReadAllBytes(binarySourceFile);
-            Console.Write(content.ToString());
-            Console.WriteLine(String.Format("End Reading {0}:\r\n", binarySourceFile));
+            var proc = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = soxPath,
+                    Arguments =args,
+
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
 
 
-            //using (FileStream fs = File.OpenRead(binarySourceFile))
-            ////{
-            ////    //Convert.ToString(b, 2)
-            ////}
-
-            //using (BinaryReader reader = new BinaryReader(fs))
-            //{
-            //    // Read in all pairs.
-            //    while (reader.BaseStream.Position != reader.BaseStream.Length)
-            //    {
-            //        Item item = new Item();
-            //        item.UniqueId = reader.ReadString();
-            //        item.StringUnique = reader.ReadString();
-            //        result.Add(item);
-            //    }
-            //}
-            //return result;
+proc.Start();
+            while (!proc.StandardOutput.EndOfStream)
+            {
+                string? line = proc.StandardOutput.ReadLine();
+                if (line == null)
+                {
+                    
+                }
+            }
         }
     }
 }

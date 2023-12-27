@@ -18,6 +18,7 @@ namespace OldFileExtractor
             }
             panelContent.Controls.Add(audioFileConverter);
             audioFileConverter.Dock = DockStyle.Fill;
+            audioFileConverter.MinimumSize = new System.Drawing.Size(705, 516);
         }
     }
 }
