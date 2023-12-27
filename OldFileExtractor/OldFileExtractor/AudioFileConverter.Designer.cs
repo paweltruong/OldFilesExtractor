@@ -74,6 +74,7 @@
             buttonOutput.TabIndex = 2;
             buttonOutput.Text = "Select output";
             buttonOutput.UseVisualStyleBackColor = true;
+            buttonOutput.Click += buttonOutput_Click;
             // 
             // textBoxOutput
             // 
@@ -109,7 +110,7 @@
             // columnHeader3
             // 
             columnHeader3.Text = "Path";
-            columnHeader3.Width = 300;
+            columnHeader3.Width = 400;
             // 
             // labelOutput
             // 
@@ -128,6 +129,7 @@
             buttonConvert.TabIndex = 6;
             buttonConvert.Text = "Convert";
             buttonConvert.UseVisualStyleBackColor = true;
+            buttonConvert.Click += buttonConvert_Click;
             // 
             // openFileDialogOutput
             // 
